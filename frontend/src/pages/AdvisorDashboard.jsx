@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 
-const API_URL = "http://localhost:8000";
-axios.get('${API_URL}/')
+const API_URL = "http://localhost:5000";
+axios.get(`${API_URL}/`)
 
 const AdvisorDashboard = () => {
   const [test, setTest] = useState([]);
