@@ -1,71 +1,134 @@
+// frontend/src/pages/Login.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
-import axios from 'axios';
-
-const API_URL = "http://localhost:8000";
+import { GraduationCap, Mail, Lock, User, Building2 } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [role, setRole] = useState("student");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('student');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
+    setError('');
+
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      // Sync with Backend
-      const response = await axios.post(`${API_URL}/auth/sync`, {
-        firebase_uid: user.uid,
-        email: user.email,
-        full_name: user.displayName,
-        role: role
-      });
+      // Mock authentication - replace with actual API call
+      localStorage.setItem('userEmail', email);
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userName', email.split('@')[0]);
 
-      // Store Auth Data
-      localStorage.setItem("userEmail", user.email);
-      localStorage.setItem("userRole", role);
-      localStorage.setItem("userId", response.data.user_id);
-
-      // Redirect
-      if (role === 'student') navigate('/student');
-      else if (role === 'advisor') navigate('/advisor');
-      else if (role === 'hod') navigate('/hod');
-      
-    } catch (error) {
-      console.error("Login Error:", error);
-      alert("Login Failed. See console.");
+      // Redirect based on role
+      switch(role) {
+        case 'student':
+          navigate('/student-dashboard');
+          break;
+        case 'advisor':
+          navigate('/advisor-dashboard');
+          break;
+        case 'hod':
+          navigate('/hod-dashboard');
+          break;
+        default:
+          navigate('/student-dashboard');
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
-      <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', width: '384px', borderTop: '4px solid #2563eb' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center', color: '#1f2937' }}>Performance Dashboard</h1>
-        
-        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>Select Your Role:</label>
-        <select 
-          style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', marginBottom: '24px', backgroundColor: '#f9fafb' }}
-          onChange={(e) => setRole(e.target.value)}
-          value={role}
-        >
-          <option value="student">Student</option>
-          <option value="advisor">Class Advisor</option>
-          <option value="hod">Head of Department</option>
-        </select>
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <div className="p-3 bg-blue-600 rounded-full">
+              <GraduationCap className="h-10 w-10 text-white" />
+            </div>
+          </div>
+          <h2 className="text-3xl font-bold text-gray-800">Welcome to SkillTwin</h2>
+          <p className="text-gray-600 mt-2">Sign in to continue to your dashboard</p>
+        </div>
 
-        <button 
-          onClick={handleLogin}
-          disabled={loading}
-          style={{ width: '100%', backgroundColor: '#2563eb', color: 'white', padding: '12px', borderRadius: '4px', fontWeight: '600', border: 'none', cursor: 'pointer', opacity: loading ? 0.7 : 1 }}
-        >
-          {loading ? "Syncing..." : "Sign in with Google"}
-        </button>
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Role
+              </div>
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="student">Student</option>
+              <option value="advisor">Academic Advisor</option>
+              <option value="hod">Head of Department</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email Address
+              </div>
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Password
+              </div>
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Demo credentials: student@example.com / any password
+          </p>
+        </div>
       </div>
     </div>
   );

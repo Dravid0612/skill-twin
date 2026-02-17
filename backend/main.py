@@ -1,100 +1,143 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from supabase import create_client, Client
+# backend/main.py
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from ml_engine import predict_student_performance
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+import uvicorn
+import jwt
+import bcrypt
+from datetime import datetime, timedelta
 import os
-import random
+from dotenv import load_dotenv
+from ml_engine import predict_performance, analyze_coding_patterns, predict_placement
 
-# --- CONFIG ---
-# REPLACE WITH YOUR SUPABASE CREDENTIALS
-SUPABASE_URL = "https://your-project.supabase.co"
-SUPABASE_KEY = "your-anon-key"
+# Load environment variables
+load_dotenv()
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-app = FastAPI()
+app = FastAPI(title="SkillTwin API", version="1.0.0")
 
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- MODELS ---
-class UserData(BaseModel):
-    firebase_uid: str
-    email: str
+# Secret key for JWT
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+
+# Models
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
     role: str
-    full_name: str
 
-class StatUpdate(BaseModel):
-    user_id: str  # UPDATED: Now accepts UUID
+class UserResponse(BaseModel):
+    id: str
+    email: EmailStr
+    name: str
+    role: str
+    token: str
+
+class PerformanceData(BaseModel):
+    user_id: str
+    subjects: List[dict]
+    attendance: float
+    previous_marks: List[float]
+
+class CodingData(BaseModel):
+    user_id: str
     platform: str
-    rating: int
     problems_solved: int
+    contest_rating: float
+    rank: int
 
-# --- ROUTES ---
+# Mock database (replace with real database)
+users_db = {}
+performance_db = {}
 
-@app.post("/auth/sync")
-def sync_user(user: UserData):
-    # Check if user exists
-    res = supabase.table('users').select("*").eq('email', user.email).execute()
-    
-    if not res.data:
-        # Create new user
-        data = supabase.table('users').insert({
-            "firebase_uid": user.firebase_uid,
-            "email": user.email,
-            "role": user.role,
-            "full_name": user.full_name
-        }).execute()
-        # Return new User ID
-        return {"status": "created", "role": user.role, "user_id": data.data[0]['id']}
-    
-    # Return existing User ID
-    return {"status": "exists", "role": res.data[0]['role'], "user_id": res.data[0]['id']}
+@app.get("/")
+async def root():
+    return {"message": "Welcome to SkillTwin API", "status": "running"}
 
-@app.get("/student/dashboard/{user_id}")
-def get_student_data(user_id: str):
-    # Fetch Stats by User ID
-    stats = supabase.table('coding_stats').select("*").eq('user_id', user_id).execute()
-    
-    prediction = {"predicted_rating": 0, "suggestion": "No data available yet."}
-    
-    if stats.data:
-        # Sort by date to get latest
-        sorted_stats = sorted(stats.data, key=lambda x: x['contest_date'])
-        latest = sorted_stats[-1]
+@app.post("/api/login", response_model=UserResponse)
+async def login(user: UserLogin):
+    try:
+        # Mock authentication - replace with real database check
+        user_id = f"user_{len(users_db) + 1}"
+        token = jwt.encode(
+            {
+                "user_id": user_id,
+                "email": user.email,
+                "role": user.role,
+                "exp": datetime.utcnow() + timedelta(days=1)
+            },
+            SECRET_KEY,
+            algorithm="HS256"
+        )
         
-        # ML Prediction
-        pred_rating, sugg = predict_student_performance(latest['rating'], latest['problems_solved'])
-        prediction = {"predicted_rating": pred_rating, "suggestion": sugg}
+        response = UserResponse(
+            id=user_id,
+            email=user.email,
+            name=user.email.split('@')[0],
+            role=user.role,
+            token=token
+        )
+        
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    return {"history": stats.data, "prediction": prediction}
+@app.post("/api/predict-performance")
+async def predict_student_performance(data: PerformanceData):
+    try:
+        # Call ML engine
+        prediction = predict_performance(data.dict())
+        return {"prediction": prediction}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/advisor/generate-test")
-def generate_test():
-    problems = [
-        {"id": 1, "title": "Two Sum", "difficulty": "Easy", "platform": "LeetCode"},
-        {"id": 2, "title": "Merge K Lists", "difficulty": "Hard", "platform": "LeetCode"},
-        {"id": 3, "title": "Chef and Strings", "difficulty": "Medium", "platform": "CodeChef"},
-        {"id": 4, "title": "Watermelon", "difficulty": "Easy", "platform": "CodeForces"},
-    ]
-    return random.sample(problems, min(3, len(problems)))
+@app.post("/api/analyze-coding")
+async def analyze_coding(data: CodingData):
+    try:
+        analysis = analyze_coding_patterns(data.dict())
+        return analysis
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/hod/overview")
-def get_hod_overview():
-    users = supabase.table('users').select("*").execute()
-    stats = supabase.table('coding_stats').select("*").execute()
+@app.get("/api/student/{student_id}/progress")
+async def get_student_progress(student_id: str):
+    # Mock data - replace with database query
     return {
-        "total_students": len([u for u in users.data if u['role'] == 'student']),
-        "total_submissions": len(stats.data),
-        "raw_data": stats.data
+        "student_id": student_id,
+        "cgpa": 8.7,
+        "coding_score": 85,
+        "problems_solved": 347,
+        "contest_rating": 1642,
+        "attendance": 92,
+        "at_risk": False,
+        "recommendations": [
+            "Focus on Dynamic Programming",
+            "Practice System Design",
+            "Improve Database concepts"
+        ]
     }
 
-@app.post("/stats/update")
-def update_stats(data: StatUpdate):
-    res = supabase.table('coding_stats').insert(data.dict()).execute()
-    return {"message": "Stats updated successfully"}
+@app.get("/api/advisor/{advisor_id}/students")
+async def get_advisor_students(advisor_id: str):
+    # Mock data for advisor dashboard
+    return {
+        "total_students": 45,
+        "at_risk_students": 3,
+        "average_performance": 78.5,
+        "students": [
+            {"id": "1", "name": "John Doe", "performance": 85, "status": "good"},
+            {"id": "2", "name": "Jane Smith", "performance": 62, "status": "at_risk"},
+            {"id": "3", "name": "Bob Johnson", "performance": 91, "status": "excellent"}
+        ]
+    }
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
