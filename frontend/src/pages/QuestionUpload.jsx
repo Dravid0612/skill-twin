@@ -52,9 +52,9 @@ const QuestionUpload = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 pt-20">
       <Navbar user={user || { name: 'Student', role: 'student' }} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="app-container py-8">
         <div className="bg-white rounded-3xl shadow-xl p-8 mb-8">
           <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
             <div>
@@ -73,7 +73,7 @@ const QuestionUpload = () => {
           </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-8 lg:grid-cols-[1.6fr_0.9fr]">
           <section className="space-y-6">
             <div className="bg-white rounded-3xl shadow-lg p-6">
               <h2 className="text-xl font-semibold text-slate-900 mb-4">Upload or paste paper text</h2>
