@@ -1,23 +1,23 @@
 // backend/server.js
 const express = require('express');
 const cors = require('cors');
+const dotenv = require('dotenv');
+
+dotenv.config();
 const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // Your frontend URL
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'], // Frontend URLs
   credentials: true
 }));
 app.use(express.json());
 
 // ==================== MOCK DATABASE ====================
-const mockDatabase = {
+const database = {
   users: [
-    { id: 1, name: 'John Student', email: 'student@example.com', role: 'student', institution: 'college' },
-    { id: 2, name: 'Prof. Smith', email: 'teacher@example.com', role: 'teacher', institution: 'college' },
-    { id: 3, name: 'Dr. Johnson', email: 'advisor@example.com', role: 'advisor', institution: 'college' },
-    { id: 4, name: 'Mr. Placement', email: 'placement@example.com', role: 'placement', institution: 'college' },
-    { id: 5, name: 'Dr. HOD', email: 'hod@example.com', role: 'hod', institution: 'college' }
+    { id: 1, name: 'Student User', email: 'student@example.com', role: 'student', institution: 'college' },
+    { id: 5, name: 'Teacher User', email: 'teacher@example.com', role: 'teacher', institution: 'college' }
   ],
   
   students: [
@@ -26,43 +26,41 @@ const mockDatabase = {
     { id: 103, name: 'Carol Davis', rollNo: 'CS003', year: 3, branch: 'CSE', cgpa: 9.2 },
     { id: 104, name: 'David Brown', rollNo: 'CS004', year: 3, branch: 'CSE', cgpa: 6.8 },
     { id: 105, name: 'Eva Green', rollNo: 'CS005', year: 3, branch: 'CSE', cgpa: 8.9 }
-  ],
-
-  codingProfiles: [
-    { studentId: 101, platform: 'leetcode', username: 'alice_c', rating: 1850, problemsSolved: 245, contests: 12 },
-    { studentId: 101, platform: 'codeforces', username: 'alice_cf', rating: 1620, problemsSolved: 189, contests: 8 },
-    { studentId: 102, platform: 'leetcode', username: 'bob_w', rating: 1680, problemsSolved: 178, contests: 7 },
-    { studentId: 102, platform: 'codechef', username: 'bob_cc', rating: 1720, problemsSolved: 156, contests: 5 },
-    { studentId: 103, platform: 'leetcode', username: 'carol_d', rating: 2150, problemsSolved: 312, contests: 15 },
-    { studentId: 103, platform: 'codeforces', username: 'carol_cf', rating: 1980, problemsSolved: 267, contests: 11 },
-    { studentId: 104, platform: 'leetcode', username: 'david_b', rating: 1450, problemsSolved: 98, contests: 3 },
-    { studentId: 105, platform: 'codeforces', username: 'eva_g', rating: 1720, problemsSolved: 203, contests: 9 }
-  ],
-
-  placements: [
-    { studentId: 101, company: 'Google', offer: 'SDE Intern', status: 'selected', package: 25 },
-    { studentId: 103, company: 'Microsoft', offer: 'SDE', status: 'selected', package: 28 },
-    { studentId: 105, company: 'Amazon', offer: 'SDE Intern', status: 'in-process', package: 22 }
-  ],
-
-  academicRecords: [
-    { studentId: 101, subject: 'Data Structures', marks: 88, attendance: 92 },
-    { studentId: 101, subject: 'Algorithms', marks: 85, attendance: 90 },
-    { studentId: 102, subject: 'Data Structures', marks: 72, attendance: 78 },
-    { studentId: 102, subject: 'Algorithms', marks: 75, attendance: 80 },
-    { studentId: 103, subject: 'Data Structures', marks: 95, attendance: 98 },
-    { studentId: 103, subject: 'Algorithms', marks: 92, attendance: 95 },
-    { studentId: 104, subject: 'Data Structures', marks: 65, attendance: 70 },
-    { studentId: 104, subject: 'Algorithms', marks: 68, attendance: 72 },
-    { studentId: 105, subject: 'Data Structures', marks: 86, attendance: 88 },
-    { studentId: 105, subject: 'Algorithms', marks: 89, attendance: 91 }
   ]
 };
 
-// ==================== AUTH ROUTES ====================
+// ==================== ROOT ENDPOINT (MOST IMPORTANT FOR TESTING) ====================
+app.get('/', (req, res) => {
+  res.json({
+    server: 'SkillTwin Node.js Backend',
+    status: '✅ RUNNING',
+    port: 5000,
+    timestamp: new Date().toISOString(),
+    available_endpoints: [
+      'GET  /                          - This status page',
+      'POST /api/login                  - User login',
+      'GET  /api/student/:id/overview   - Student dashboard',
+      'GET  /api/teacher/:id/overview   - Teacher dashboard',
+      'POST /api/question-paper/analyze - Question paper analysis',
+      'POST /api/mock-test/generate    - Generate mock test questions'
+    ],
+    test_urls: [
+      'http://localhost:5000/',
+      'http://localhost:5000/api/student/101/overview',
+      'http://localhost:5000/api/teacher/5/overview'
+    ]
+  });
+});
+
+// ==================== LOGIN ENDPOINT ====================
 app.post('/api/login', (req, res) => {
-  const { email, password } = req.body;
-  const user = mockDatabase.users.find(u => u.email === email);
+  const { email, password, role } = req.body;
+  console.log('Login attempt:', { email, role });
+  
+  // Find user by email (case insensitive)
+  const user = database.users.find(u => 
+    u.email.toLowerCase() === email?.toLowerCase()
+  );
   
   if (user) {
     res.json({
@@ -77,345 +75,322 @@ app.post('/api/login', (req, res) => {
       token: 'mock-jwt-token-' + Date.now()
     });
   } else {
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
+    // For demo, accept any email with @example.com
+    if (email.includes('@example.com')) {
+      const demoUser = {
+        id: Date.now(),
+        name: email.split('@')[0],
+        email: email,
+        role: role || 'student',
+        institution: 'college'
+      };
+      res.json({
+        success: true,
+        user: demoUser,
+        token: 'mock-jwt-token-' + Date.now()
+      });
+    } else {
+      res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials. Try student@example.com' 
+      });
+    }
   }
 });
 
-// ==================== HOD DASHBOARD ROUTES ====================
-app.get('/api/hod/overview', (req, res) => {
-  const totalStudents = mockDatabase.students.length;
-  const totalSubmissions = mockDatabase.codingProfiles.reduce((sum, p) => sum + p.problemsSolved, 0);
+// ==================== STUDENT DASHBOARD ENDPOINTS ====================
+app.get('/api/student/:id/overview', (req, res) => {
+  const studentId = parseInt(req.params.id);
+  console.log(`👨‍🎓 Student ${studentId} overview requested`);
   
-  res.json({
-    total_students: totalStudents,
-    total_submissions: totalSubmissions,
-    placement_rate: '78%',
-    average_cgpa: 8.3,
-    raw_data: mockDatabase.codingProfiles.slice(0, 10).map(p => ({
-      user_id: `student_${p.studentId}`,
-      platform: p.platform,
-      rating: p.rating,
-      problems_solved: p.problemsSolved,
-      contest_date: new Date().toISOString()
-    })),
-    summary_stats: {
-      leetcode: {
-        total_students: mockDatabase.codingProfiles.filter(p => p.platform === 'leetcode').length,
-        avg_rating: Math.round(mockDatabase.codingProfiles.filter(p => p.platform === 'leetcode')
-          .reduce((sum, p) => sum + p.rating, 0) / 
-          mockDatabase.codingProfiles.filter(p => p.platform === 'leetcode').length),
-        total_solved: mockDatabase.codingProfiles.filter(p => p.platform === 'leetcode')
-          .reduce((sum, p) => sum + p.problemsSolved, 0)
-      },
-      codeforces: {
-        total_students: mockDatabase.codingProfiles.filter(p => p.platform === 'codeforces').length,
-        avg_rating: Math.round(mockDatabase.codingProfiles.filter(p => p.platform === 'codeforces')
-          .reduce((sum, p) => sum + p.rating, 0) / 
-          mockDatabase.codingProfiles.filter(p => p.platform === 'codeforces').length),
-        total_solved: mockDatabase.codingProfiles.filter(p => p.platform === 'codeforces')
-          .reduce((sum, p) => sum + p.problemsSolved, 0)
-      },
-      codechef: {
-        total_students: mockDatabase.codingProfiles.filter(p => p.platform === 'codechef').length,
-        avg_rating: Math.round(mockDatabase.codingProfiles.filter(p => p.platform === 'codechef')
-          .reduce((sum, p) => sum + p.rating, 0) / 
-          mockDatabase.codingProfiles.filter(p => p.platform === 'codechef').length || 1),
-        total_solved: mockDatabase.codingProfiles.filter(p => p.platform === 'codechef')
-          .reduce((sum, p) => sum + p.problemsSolved, 0)
-      }
-    }
-  });
-});
-
-app.get('/api/hod/department-stats', (req, res) => {
-  res.json({
-    branches: [
-      { name: 'CSE', students: 120, placed: 95, avgPackage: 18.5 },
-      { name: 'IT', students: 85, placed: 65, avgPackage: 16.2 },
-      { name: 'ECE', students: 95, placed: 70, avgPackage: 14.8 },
-      { name: 'ME', students: 75, placed: 45, avgPackage: 12.5 }
-    ],
-    placement_trends: [
-      { year: 2020, placed: 145 },
-      { year: 2021, placed: 162 },
-      { year: 2022, placed: 188 },
-      { year: 2023, placed: 215 },
-      { year: 2024, placed: 178 }
-    ],
-    top_performers: mockDatabase.students.sort((a, b) => b.cgpa - a.cgpa).slice(0, 5)
-  });
-});
-
-// ==================== ADVISOR DASHBOARD ROUTES ====================
-app.get('/api/advisor/mentees/:advisorId', (req, res) => {
-  const { advisorId } = req.params;
+  const student = database.students.find(s => s.id === studentId);
   
-  res.json({
-    mentees: mockDatabase.students.map(s => ({
-      id: s.id,
-      name: s.name,
-      rollNo: s.rollNo,
-      year: s.year,
-      branch: s.branch,
-      cgpa: s.cgpa,
-      status: s.cgpa >= 8 ? 'Good' : s.cgpa >= 7 ? 'Average' : 'At Risk',
-      attendance: Math.floor(Math.random() * 30) + 70, // Random attendance 70-100%
-      meetings: Math.floor(Math.random() * 5) + 1,
-      lastMeeting: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
-    })),
-    summary: {
-      totalMentees: mockDatabase.students.length,
-      atRisk: mockDatabase.students.filter(s => s.cgpa < 7).length,
-      goodStanding: mockDatabase.students.filter(s => s.cgpa >= 8).length,
-      average: mockDatabase.students.filter(s => s.cgpa >= 7 && s.cgpa < 8).length
-    }
-  });
-});
-
-app.post('/api/advisor/schedule-meeting', (req, res) => {
-  const { studentId, date, time, type } = req.body;
-  
-  res.json({
-    success: true,
-    message: `Meeting scheduled with student ${studentId}`,
-    meeting: {
-      id: Date.now(),
-      studentId,
-      date,
-      time,
-      type,
-      status: 'scheduled'
-    }
-  });
-});
-
-// ==================== STUDENT DASHBOARD ROUTES ====================
-app.get('/api/student/:studentId/overview', (req, res) => {
-  const { studentId } = req.params;
-  const student = mockDatabase.students.find(s => s.id === parseInt(studentId));
-  const codingProfiles = mockDatabase.codingProfiles.filter(p => p.studentId === parseInt(studentId));
-  const placements = mockDatabase.placements.filter(p => p.studentId === parseInt(studentId));
-  const academics = mockDatabase.academicRecords.filter(a => a.studentId === parseInt(studentId));
+  if (!student) {
+    return res.status(404).json({ error: 'Student not found' });
+  }
   
   res.json({
     profile: student,
     academic: {
-      subjects: academics,
+      subjects: [
+        { name: 'Data Structures', marks: 88, attendance: 92 },
+        { name: 'Algorithms', marks: 85, attendance: 90 },
+        { name: 'Database Systems', marks: 92, attendance: 95 }
+      ],
       cgpa: student.cgpa,
-      totalMarks: academics.reduce((sum, a) => sum + a.marks, 0),
-      averageAttendance: Math.round(academics.reduce((sum, a) => sum + a.attendance, 0) / academics.length)
+      weakTopics: ['Dynamic Programming', 'Database Indexing', 'Operating Systems']
     },
     coding: {
-      profiles: codingProfiles,
-      totalProblems: codingProfiles.reduce((sum, p) => sum + p.problemsSolved, 0),
-      averageRating: Math.round(codingProfiles.reduce((sum, p) => sum + p.rating, 0) / codingProfiles.length),
-      contests: codingProfiles.reduce((sum, p) => sum + p.contests, 0)
+      profiles: [
+        { platform: 'leetcode', rating: 1750, problemsSolved: 230, contests: 10 },
+        { platform: 'codeforces', rating: 1620, problemsSolved: 145, contests: 7 }
+      ],
+      totalProblems: 375,
+      learningTime: '12h 40m'
     },
-    placements: placements,
-    recommendations: {
-      companies: ['Google', 'Microsoft', 'Amazon', 'Meta'].filter(() => Math.random() > 0.5),
-      skills: ['DSA', 'System Design', 'React', 'Node.js'].filter(() => Math.random() > 0.5),
-      contests: ['LeetCode Weekly', 'Codeforces Round'].filter(() => Math.random() > 0.5)
+    progress: {
+      mockTestScore: 82,
+      learningSessions: 18,
+      recommendedTopics: ['Dynamic Programming', 'Database Indexing', 'System Design']
     }
   });
 });
 
-app.get('/api/student/:studentId/coding-stats', (req, res) => {
-  const { studentId } = req.params;
-  const profiles = mockDatabase.codingProfiles.filter(p => p.studentId === parseInt(studentId));
-  
-  const platformStats = {};
-  profiles.forEach(p => {
-    platformStats[p.platform] = {
-      rating: p.rating,
-      problemsSolved: p.problemsSolved,
-      contests: p.contests,
-      username: p.username
-    };
-  });
-  
-  res.json({
-    platforms: platformStats,
-    rating_history: [
-      { month: 'Jan', rating: 1450 },
-      { month: 'Feb', rating: 1520 },
-      { month: 'Mar', rating: 1580 },
-      { month: 'Apr', rating: 1650 },
-      { month: 'May', rating: 1720 },
-      { month: 'Jun', rating: 1780 }
-    ],
-    problem_stats: {
-      easy: 85,
-      medium: 120,
-      hard: 45
-    }
-  });
-});
+// ==================== TEACHER DASHBOARD ENDPOINTS ====================
+app.get('/api/teacher/:id/overview', (req, res) => {
+  const teacherId = req.params.id;
+  console.log(`👩‍🏫 Teacher ${teacherId} overview requested`);
 
-// ==================== TEACHER DASHBOARD ROUTES ====================
-app.get('/api/teacher/:teacherId/classes', (req, res) => {
-  const { teacherId } = req.params;
-  
   res.json({
+    teacher: {
+      id: teacherId,
+      name: teacherId === '101' ? 'Teacher A' : 'Teacher User',
+      department: 'Computer Science'
+    },
     classes: [
-      { id: 101, name: 'Data Structures', year: 3, branch: 'CSE', students: 65 },
-      { id: 102, name: 'Algorithms', year: 3, branch: 'CSE', students: 65 },
-      { id: 103, name: 'Database Systems', year: 3, branch: 'IT', students: 58 }
+      { name: 'Data Structures', students: 64, averageScore: 76 },
+      { name: 'Algorithms', students: 62, averageScore: 74 }
     ],
-    recent_activities: [
-      { type: 'assignment', title: 'DSA Assignment 3', submitted: 45, total: 65 },
-      { type: 'test', title: 'Mid Term Exam', average: 72, highest: 98 },
-      { type: 'lecture', title: 'Graph Algorithms', attendance: 58 }
-    ]
-  });
-});
-
-app.get('/api/teacher/:teacherId/class/:classId/performance', (req, res) => {
-  const { classId } = req.params;
-  
-  const students = mockDatabase.students.slice(0, 10).map(s => ({
-    id: s.id,
-    name: s.name,
-    rollNo: s.rollNo,
-    marks: Math.floor(Math.random() * 40) + 60,
-    attendance: Math.floor(Math.random() * 30) + 70,
-    status: Math.random() > 0.8 ? 'At Risk' : 'Good'
-  }));
-  
-  res.json({
-    class_id: classId,
-    subject: 'Data Structures',
-    students: students,
-    statistics: {
-      average: Math.round(students.reduce((sum, s) => sum + s.marks, 0) / students.length),
-      highest: Math.max(...students.map(s => s.marks)),
-      lowest: Math.min(...students.map(s => s.marks)),
-      atRisk: students.filter(s => s.status === 'At Risk').length
+    weakTopicSummary: ['Dynamic Programming', 'Database Systems', 'Operating Systems'],
+    platformInsights: {
+      totalStudents: database.students.length,
+      averageEngagement: '85%',
+      topImprovementAreas: ['Dynamic Programming', 'Databases']
     }
   });
 });
 
-// ==================== PLACEMENT OFFICER DASHBOARD ROUTES ====================
-app.get('/api/placement/overview', (req, res) => {
-  const eligibleStudents = mockDatabase.students.filter(s => s.cgpa >= 7);
-  const placedStudents = mockDatabase.placements.length;
-  
+// ==================== QUESTION PAPER ANALYSIS ENDPOINT ====================
+app.post('/api/question-paper/analyze', async (req, res) => {
+  const { text, studentId } = req.body;
+
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ message: 'question paper text is required' });
+  }
+
+  try {
+    const analysis = await analyzeQuestionPaperWithGemini(text);
+    const weakTopics = recommendWeakTopics(studentId, analysis.topics);
+
+    res.json({
+      topics: analysis.topics,
+      weakTopics,
+      recommendedResources: createResourceList(weakTopics),
+      summary: analysis.summary
+    });
+  } catch (err) {
+    console.error('Gemini analysis failed:', err);
+    res.status(500).json({ message: 'Failed to analyze question paper' });
+  }
+});
+
+// ==================== MOCK TEST ENDPOINT ====================
+app.post('/api/mock-test/generate', (req, res) => {
+  const { studentId, mode } = req.body;
+  const questionBank = getMockQuestionBank();
+
+  const selectedQuestions = questionBank
+    .sort(() => 0.5 - Math.random())
+    .slice(0, 5)
+    .map((question) => ({
+      ...question,
+      options: shuffleArray(question.options)
+    }));
+
   res.json({
-    statistics: {
-      totalStudents: mockDatabase.students.length,
-      eligible: eligibleStudents.length,
-      placed: placedStudents,
-      registrationRate: '85%',
-      placementRate: Math.round((placedStudents / eligibleStudents.length) * 100),
-      averagePackage: '18.5 LPA',
-      companiesVisited: 45
-    },
-    recentPlacements: mockDatabase.placements.map(p => ({
-      ...p,
-      studentName: mockDatabase.students.find(s => s.id === p.studentId)?.name
-    })),
-    upcomingDrives: [
-      { company: 'Google', date: '2024-03-15', role: 'SDE', package: '25 LPA', eligible: 'CGPA > 8' },
-      { company: 'Microsoft', date: '2024-03-20', role: 'SDE', package: '24 LPA', eligible: 'CGPA > 7.5' },
-      { company: 'Amazon', date: '2024-03-25', role: 'SDE', package: '23 LPA', eligible: 'CGPA > 7' }
-    ]
+    questions: selectedQuestions,
+    mode: mode || 'adaptive',
+    generatedAt: new Date().toISOString()
   });
 });
 
-app.get('/api/placement/leaderboard', (req, res) => {
-  const leaderboard = mockDatabase.students.map(s => ({
-    rank: 0, // Will be set after sorting
-    name: s.name,
-    rollNo: s.rollNo,
-    cgpa: s.cgpa,
-    codingScore: mockDatabase.codingProfiles
-      .filter(p => p.studentId === s.id)
-      .reduce((sum, p) => sum + p.problemsSolved, 0),
-    contestRating: Math.round(mockDatabase.codingProfiles
-      .filter(p => p.studentId === s.id)
-      .reduce((sum, p) => sum + p.rating, 0) / 
-      mockDatabase.codingProfiles.filter(p => p.studentId === s.id).length || 1),
-    status: mockDatabase.placements.find(p => p.studentId === s.id) ? 'Placed' : 'Not Placed'
-  }))
-  .sort((a, b) => (b.codingScore + b.cgpa * 100) - (a.codingScore + a.cgpa * 100))
-  .map((student, index) => ({ ...student, rank: index + 1 }));
-  
-  res.json(leaderboard);
-});
+// ==================== UTILITY FUNCTIONS ====================
+const getMockQuestionBank = () => ([
+  {
+    id: 'q1',
+    text: 'Which data structure provides the best performance for implementing a LRU cache?',
+    topic: 'Data Structures',
+    difficulty: 'Medium',
+    options: ['HashMap + Doubly Linked List', 'Binary Search Tree', 'Stack', 'Queue'],
+    answer: 'HashMap + Doubly Linked List'
+  },
+  {
+    id: 'q2',
+    text: 'What is the time complexity of quicksort in the average case?',
+    topic: 'Algorithms',
+    difficulty: 'Easy',
+    options: ['O(n)', 'O(n log n)', 'O(n^2)', 'O(log n)'],
+    answer: 'O(n log n)'
+  },
+  {
+    id: 'q3',
+    text: 'Which normal form removes transitive dependencies from a database schema?',
+    topic: 'Database Systems',
+    difficulty: 'Medium',
+    options: ['1NF', '2NF', '3NF', 'BCNF'],
+    answer: '3NF'
+  },
+  {
+    id: 'q4',
+    text: 'What is the maximum number of nodes in a binary tree of height h?',
+    topic: 'Data Structures',
+    difficulty: 'Easy',
+    options: ['2^h', '2^(h+1)-1', 'h^2', 'h!'],
+    answer: '2^(h+1)-1'
+  },
+  {
+    id: 'q5',
+    text: 'Which SQL command is used to remove duplicate rows from a SELECT query result?',
+    topic: 'Database Systems',
+    difficulty: 'Easy',
+    options: ['UNIQUE', 'DISTINCT', 'ROW_NUMBER', 'GROUP BY'],
+    answer: 'DISTINCT'
+  },
+  {
+    id: 'q6',
+    text: 'Which algorithm is most appropriate for finding the shortest path in a weighted graph with non-negative edges?',
+    topic: 'Algorithms',
+    difficulty: 'Medium',
+    options: ['Depth-first search', 'Breadth-first search', 'Dijkstra’s algorithm', 'Bellman-Ford algorithm'],
+    answer: 'Dijkstra’s algorithm'
+  }
+]);
 
-// ==================== SCHOOL MODE ROUTES ====================
-app.get('/api/school/student/:studentId/academics', (req, res) => {
+const recommendWeakTopics = (studentId, analyzedTopics) => {
+  const performance = {
+    101: ['Algorithms', 'Database Systems'],
+    102: ['Data Structures', 'Algorithms'],
+    103: ['Database Systems'],
+    104: ['Algorithms', 'Data Structures'],
+    105: ['Database Systems', 'Algorithms']
+  };
+
+  const studentWeak = performance[studentId] || ['Data Structures', 'Algorithms'];
+  return [...new Set([...analyzedTopics.slice(0, 4), ...studentWeak].slice(0, 4))];
+};
+
+const createResourceList = (topics) => (
+  topics.map((topic) => `Review short notes and example questions for ${topic}`)
+);
+
+const analyzeQuestionPaperWithGemini = async (text) => {
+  const model = process.env.GEMINI_MODEL || 'gemini-1.5';
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  const topicMatches = Array.from(new Set(
+    text.match(/\b(Data Structures|Algorithms|Database Systems|Operating Systems|Networks|OOP|System Design|Software Engineering)\b/gi) || []
+  )).map((match) => match.trim());
+
+  const topics = topicMatches.length ? topicMatches : ['Data Structures', 'Algorithms', 'Database Systems'];
+  const summary = `Extracted ${topics.length} high-priority topics from the uploaded paper.`;
+
+  if (!apiKey) {
+    return { topics, summary };
+  }
+
+  const url = `https://gemini.googleapis.com/v1/models/${model}:predict`;
+  const payload = {
+    instances: [
+      {
+        prompt: `Extract a concise list of exam topics from the following question paper text:\n\n${text}`
+      }
+    ]
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini API responded with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const extractedText = data?.predictions?.[0]?.content?.[0]?.text || data?.predictions?.[0]?.output || '';
+  const parsedTopics = Array.from(new Set(
+    extractedText.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean)
+  ));
+
+  return {
+    topics: parsedTopics.length ? parsedTopics : topics,
+    summary: parsedTopics.length ? `Gemini extracted ${parsedTopics.length} topics.` : summary
+  };
+};
+
+const shuffleArray = (array) => {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+};
+
+// ==================== TEACHER DASHBOARD ENDPOINTS ====================
+app.get('/api/teacher/:id/overview', (req, res) => {
+  const teacherId = req.params.id;
+  console.log(`👩‍🏫 Teacher ${teacherId} overview requested`);
+
   res.json({
-    performance: [
-      { subject: 'Mathematics', marks: 92, grade: 'A', teacher: 'Mr. Sharma' },
-      { subject: 'Science', marks: 88, grade: 'B+', teacher: 'Ms. Patel' },
-      { subject: 'English', marks: 85, grade: 'B+', teacher: 'Mrs. Gupta' },
-      { subject: 'Social Studies', marks: 78, grade: 'B', teacher: 'Mr. Singh' },
-      { subject: 'Computer Science', marks: 95, grade: 'A+', teacher: 'Ms. Reddy' }
+    teacher: {
+      id: teacherId,
+      name: teacherId === '5' ? 'Teacher User' : 'Teacher',
+      department: 'Computer Science'
+    },
+    classes: [
+      { name: 'Data Structures', students: 64, averageScore: 76 },
+      { name: 'Algorithms', students: 62, averageScore: 74 }
     ],
-    attendance: 94,
-    classRank: 8,
-    totalStudents: 45,
-    predictions: {
-      nextExam: '85-90%',
-      stream: 'Science with CS',
-      atRisk: false
-    },
-    resources: [
-      { type: 'notes', subject: 'Mathematics', title: 'Calculus Notes', url: '#' },
-      { type: 'assignment', subject: 'Science', title: 'Physics Lab Report', dueDate: '2024-03-20' }
-    ]
+    weakTopicSummary: ['Dynamic Programming', 'Database Systems', 'Operating Systems'],
+    platformInsights: {
+      totalStudents: database.students.length,
+      averageEngagement: '85%',
+      topImprovementAreas: ['Dynamic Programming', 'Databases']
+    }
   });
 });
 
-// ==================== ROOT ROUTE ====================
-app.get('/', (req, res) => {
-  res.json({
-    name: 'SkillTwin API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: [
-      '/api/login',
-      '/api/hod/overview',
-      '/api/hod/department-stats',
-      '/api/advisor/mentees/:advisorId',
-      '/api/student/:studentId/overview',
-      '/api/student/:studentId/coding-stats',
-      '/api/teacher/:teacherId/classes',
-      '/api/teacher/:teacherId/class/:classId/performance',
-      '/api/placement/overview',
-      '/api/placement/leaderboard',
-      '/api/school/student/:studentId/academics'
-    ]
-  });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// 404 handler
+// ==================== CATCH-ALL FOR DEBUGGING ====================
 app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  console.log('❌ 404 Not Found:', req.method, req.url);
+  res.status(404).json({ 
+    error: 'Endpoint not found',
+    message: `The endpoint ${req.method} ${req.url} does not exist`,
+    requested: {
+      method: req.method,
+      url: req.url,
+      path: req.path
+    },
+    available_routes: [
+      'GET /',
+      'POST /api/login',
+      'GET /api/student/:id/overview (try /api/student/101/overview)',
+      'GET /api/teacher/:id/overview (try /api/teacher/5/overview)',
+      'POST /api/question-paper/analyze',
+      'POST /api/mock-test/generate'
+    ],
+    tip: 'Try accessing http://localhost:5000/ first to see all available endpoints'
+  });
 });
 
+// ==================== START SERVER ====================
 const PORT = 5000;
 app.listen(PORT, () => {
-  console.log('\n' + '='.repeat(50));
-  console.log('🚀 SkillTwin Backend Server');
-  console.log('='.repeat(50));
-  console.log(`📡 Server: http://localhost:${PORT}`);
-  console.log(`📊 API Base: http://localhost:${PORT}/api`);
-  console.log('\n📋 Available Endpoints:');
-  console.log('   GET  /                          - API Info');
-  console.log('   POST /api/login                  - User login');
-  console.log('   GET  /api/hod/overview           - HOD dashboard');
-  console.log('   GET  /api/hod/department-stats   - Department stats');
-  console.log('   GET  /api/advisor/mentees/:id    - Advisor view');
-  console.log('   GET  /api/student/:id/overview   - Student dashboard');
-  console.log('   GET  /api/placement/overview     - Placement officer');
-  console.log('   GET  /api/placement/leaderboard  - Student leaderboard');
-  console.log('='.repeat(50));
+  console.log('\n' + '🎯'.repeat(30));
+  console.log('🚀 SKILLTWIN NODE.JS BACKEND');
+  console.log('🎯'.repeat(30));
+  console.log(`\n✅ Server is running on: http://localhost:${PORT}`);
+  console.log(`✅ Test root endpoint: http://localhost:${PORT}/`);
+  console.log(`\n📊 Available API Endpoints:`);
+  console.log(`   • POST http://localhost:${PORT}/api/login`);
+  console.log(`   • GET  http://localhost:${PORT}/api/student/101/overview`);
+  console.log(`   • GET  http://localhost:${PORT}/api/teacher/5/overview`);
+  console.log(`   • POST http://localhost:${PORT}/api/question-paper/analyze`);
+  console.log(`   • POST http://localhost:${PORT}/api/mock-test/generate`);
+  console.log('\n' + 'executed successfully' + '\n');
 });

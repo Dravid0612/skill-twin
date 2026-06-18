@@ -9,16 +9,22 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "routes": "node -e \"console.log('Available routes: GET /, POST /api/login, GET /api/hod/overview, GET /api/advisor/mentees/:id, GET /api/student/:id/overview, GET /api/placement/overview, GET /api/placement/leaderboard')\""
   },
-  "keywords": ["skilltwin", "api", "dashboard", "education", "placement"],
+  "keywords": [
+    "skilltwin",
+    "api",
+    "dashboard",
+    "education",
+    "placement"
+  ],
   "author": "SkillTwin Team",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.5.0"
+    "mongoose": "^7.8.9"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

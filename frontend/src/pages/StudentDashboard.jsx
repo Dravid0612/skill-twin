@@ -1,31 +1,23 @@
 // frontend/src/pages/StudentDashboard.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { 
   BookOpen, 
   Code, 
-  TrendingUp, 
-  Award, 
-  Clock, 
   Calendar,
   ChevronRight,
-  BarChart3,
-  Target,
-  Zap
+  FileText,
+  ShieldCheck,
+  Trophy,
+  Target
 } from 'lucide-react';
 
 const StudentDashboard = () => {
-  const [user, setUser] = useState({
-    name: localStorage.getItem('userName') || 'Student',
-    role: 'Student'
-  });
-
-  const [performanceData, setPerformanceData] = useState({
-    cgpa: 8.7,
-    codingScore: 85,
-    problemsSolved: 347,
-    contestRating: 1642,
-    attendance: 92
+  const navigate = useNavigate();
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : { name: 'Student', role: 'student' };
   });
 
   const [recentActivities, setRecentActivities] = useState([
@@ -44,11 +36,15 @@ const StudentDashboard = () => {
   const [recommendedTopics, setRecommendedTopics] = useState([
     { topic: 'Dynamic Programming', difficulty: 'Hard', progress: 45 },
     { topic: 'System Design', difficulty: 'Medium', progress: 30 },
-    { topic: 'Database Indexing', difficulty: 'Easy', progress: 80 },
+    { topic: 'Database Indexing', difficulty: 'Easy', progress: 80 }
   ]);
+  const [weakTopics] = useState(['Dynamic Programming', 'Database Indexing', 'Operating Systems']);
+  const [focusSessions] = useState(18);
 
   const handleLogout = () => {
-    // Logout logic - will be redirected by ProtectedRoute
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
   };
 
   return (
@@ -62,66 +58,45 @@ const StudentDashboard = () => {
           <p className="text-gray-600 mt-2">Here's your learning progress and upcoming tasks</p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition">
-            <div className="flex items-center justify-between">
+        {/* Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <button
+            onClick={() => navigate('/dashboard/student/question-upload')}
+            className="rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-3 mb-4">
               <div>
-                <p className="text-sm text-gray-500">Current CGPA</p>
-                <p className="text-2xl font-bold text-gray-800">{performanceData.cgpa}</p>
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Exam prep</p>
+                <h2 className="text-xl font-semibold text-slate-900">Analyze Question Paper</h2>
               </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <BookOpen className="h-6 w-6 text-blue-600" />
-              </div>
+              <FileText className="h-8 w-8 text-blue-600" />
             </div>
-          </div>
+            <p className="text-sm text-slate-500">Upload an exam paper and let AI extract key topics, weak areas, and study recommendations.</p>
+          </button>
+          <button
+            onClick={() => navigate('/dashboard/student/mock-test')}
+            className="rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Practice</p>
+                <h2 className="text-xl font-semibold text-slate-900">Start Adaptive Mock Test</h2>
+              </div>
+              <ShieldCheck className="h-8 w-8 text-emerald-600" />
+            </div>
+            <p className="text-sm text-slate-500">Take a timed mock test that detects tab switches and highlights your weak topics.</p>
+          </button>
+        </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Coding Score</p>
-                <p className="text-2xl font-bold text-gray-800">{performanceData.codingScore}%</p>
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Weak Topics to Improve</h2>
+          <div className="grid gap-3 md:grid-cols-3">
+            {weakTopics.map((topic) => (
+              <div key={topic} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Focus topic</p>
+                <p className="mt-2 text-lg font-semibold text-slate-900">{topic}</p>
               </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Code className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Problems Solved</p>
-                <p className="text-2xl font-bold text-gray-800">{performanceData.problemsSolved}</p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Zap className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Contest Rating</p>
-                <p className="text-2xl font-bold text-gray-800">{performanceData.contestRating}</p>
-              </div>
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Attendance</p>
-                <p className="text-2xl font-bold text-gray-800">{performanceData.attendance}%</p>
-              </div>
-              <div className="p-3 bg-red-100 rounded-lg">
-                <Clock className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -132,7 +107,7 @@ const StudentDashboard = () => {
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-800">Performance Overview</h2>
-                <BarChart3 className="h-5 w-5 text-gray-400" />
+                <Code className="h-5 w-5 text-gray-400" />
               </div>
               <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-200 rounded-lg">
                 <p className="text-gray-400">Performance chart visualization would go here</p>

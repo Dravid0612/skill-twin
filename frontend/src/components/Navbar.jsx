@@ -7,17 +7,19 @@ const Navbar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userRole');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     if (onLogout) onLogout();
-    navigate('/');
+    navigate('/login');
   };
+
+  const dashboardPath = user?.role === 'teacher' ? '/dashboard/teacher' : '/dashboard/student';
 
   return (
     <nav className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          <Link to="/dashboard" className="flex items-center space-x-2">
+          <Link to={dashboardPath} className="flex items-center space-x-2">
             <GraduationCap className="h-8 w-8" />
             <span className="font-bold text-xl">SkillTwin</span>
           </Link>
